@@ -162,6 +162,41 @@ class PortfolioGame {
       this.keys[e.key.toLowerCase()] = false;
       if (e.key === 'h' || e.key === 'H') this.stopHorn();
     });
+
+    // Mobile D-Pad Controls
+    const bindDpad = (id, key) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys[key] = true; }, { passive: false });
+      el.addEventListener('touchend', (e) => { e.preventDefault(); this.keys[key] = false; }, { passive: false });
+      el.addEventListener('mousedown', (e) => { this.keys[key] = true; });
+      el.addEventListener('mouseup', (e) => { this.keys[key] = false; });
+      el.addEventListener('mouseleave', (e) => { this.keys[key] = false; });
+    };
+
+    bindDpad('dpad-up', 'w');
+    bindDpad('dpad-down', 's');
+    bindDpad('dpad-left', 'a');
+    bindDpad('dpad-right', 'd');
+
+    const btnHorn = document.getElementById('dpad-horn');
+    if (btnHorn) {
+      btnHorn.addEventListener('touchstart', (e) => { e.preventDefault(); if (!this.hornActive) this.startHorn(); }, { passive: false });
+      btnHorn.addEventListener('touchend', (e) => { e.preventDefault(); this.stopHorn(); }, { passive: false });
+      btnHorn.addEventListener('mousedown', (e) => { if (!this.hornActive) this.startHorn(); });
+      btnHorn.addEventListener('mouseup', (e) => { this.stopHorn(); });
+      btnHorn.addEventListener('mouseleave', (e) => { this.stopHorn(); });
+    }
+
+    const btnEnter = document.getElementById('dpad-enter');
+    if (btnEnter) {
+      const triggerEnter = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (this.nearSign) this.openProject(this.nearSign.project);
+      };
+      btnEnter.addEventListener('touchstart', triggerEnter, { passive: false });
+      btnEnter.addEventListener('mousedown', triggerEnter);
+    }
   }
 
   // ──────────────────────────────────────────────────────

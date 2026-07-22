@@ -694,3 +694,74 @@
   0%, 100% { box-shadow: 0 8px 30px rgba(124,92,252,0.45); }
   50%       { box-shadow: 0 8px 50px rgba(124,92,252,0.7); }
 }
+
+/* ─── MOBILE D-PAD ─── */
+.mobile-dpad {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-dpad {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    position: absolute;
+    bottom: 2rem;
+    left: 1rem;
+    right: 1rem;
+    z-index: 50;
+    pointer-events: none;
+  }
+  .mobile-dpad > * {
+    pointer-events: auto;
+  }
+  .dpad-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .dpad-row {
+    display: flex;
+    gap: 8px;
+  }
+  .dpad-btn {
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-bottom: 3px solid rgba(255,255,255,0.3);
+    border-radius: 12px;
+    color: white;
+    font-size: 1.2rem;
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  .dpad-btn:active {
+    background: rgba(255,255,255,0.4);
+    border-bottom-width: 1px;
+    transform: translateY(2px);
+  }
+  .dpad-actions {
+    display: flex;
+    gap: 12px;
+  }
+  .dpad-actions .dpad-btn {
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+  
+  /* Hide keyboard hints and PC specific HUD elements on mobile */
+  .game-controls-hint { display: none; }
+  .track-progress { display: none; }
+  #minimap { display: none; }
+  div[style*="bottom: 2rem;"] { display: none !important; }
+}
