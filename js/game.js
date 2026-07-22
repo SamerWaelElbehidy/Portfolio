@@ -38,6 +38,7 @@ class PortfolioGame {
 
     // ─── Controls ───
     this.keys = {};
+    this.joystick = { active: false, nx: 0, ny: 0 }; // normalized -1..1 joystick input
     this.setupControls();
 
     // ─── Project signs ───
@@ -170,10 +171,9 @@ class PortfolioGame {
     const MAX_RADIUS = 33; // max px the knob can travel from center
 
     const resetJoystick = () => {
-      this.keys['w'] = false;
-      this.keys['s'] = false;
-      this.keys['a'] = false;
-      this.keys['d'] = false;
+      this.joystick.active = false;
+      this.joystick.nx = 0;
+      this.joystick.ny = 0;
       if (joystickKnob) {
         joystickKnob.style.transform = 'translate(0px, 0px)';
         joystickKnob.classList.remove('active');
@@ -185,23 +185,29 @@ class PortfolioGame {
       const rect = joystickZone.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
-      let dx = touchX - cx;
-      let dy = touchY - cy;
+      const dx = touchX - cx;
+      const dy = touchY - cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const clamped = Math.min(dist, MAX_RADIUS);
       const angle = Math.atan2(dy, dx);
-      const nx = (clamped / MAX_RADIUS) * Math.cos(angle); // -1 to 1
-      const ny = (clamped / MAX_RADIUS) * Math.sin(angle); // -1 to 1
+      const nx = (clamped / MAX_RADIUS) * Math.cos(angle);
+      const ny = (clamped / MAX_RADIUS) * Math.sin(angle);
 
       // Move knob visually
       joystickKnob.style.transform = `translate(${Math.cos(angle) * clamped}px, ${Math.sin(angle) * clamped}px)`;
       joystickKnob.classList.add('active');
 
-      // Map to keys
-      this.keys['w'] = ny < -DEAD_ZONE;
-      this.keys['s'] = ny >  DEAD_ZONE;
-      this.keys['a'] = nx < -DEAD_ZONE;
-      this.keys['d'] = nx >  DEAD_ZONE;
+      // Store world-space direction (dead zone applied)
+      const mag = Math.sqrt(nx * nx + ny * ny);
+      if (mag > DEAD_ZONE) {
+        this.joystick.active = true;
+        this.joystick.nx = nx;
+        this.joystick.ny = ny;
+      } else {
+        this.joystick.active = false;
+        this.joystick.nx = 0;
+        this.joystick.ny = 0;
+      }
     };
 
     if (joystickZone) {
@@ -326,22 +332,40 @@ class PortfolioGame {
   updateCar(dt) {
     const k = this.keys;
     const car = this.car;
+    const joy = this.joystick;
 
-    // Steering
-    const isTurning = k['a'] || k['arrowleft'] || k['d'] || k['arrowright'];
-    if ((k['a'] || k['arrowleft']) && Math.abs(car.speed) > 0.3) {
-      car.angle -= car.turnSpeed * dt * (car.speed > 0 ? 1 : -1);
-    }
-    if ((k['d'] || k['arrowright']) && Math.abs(car.speed) > 0.3) {
-      car.angle += car.turnSpeed * dt * (car.speed > 0 ? 1 : -1);
-    }
-
-    // Acceleration
-    if (k['w'] || k['arrowup']) {
-      car.speed += car.acceleration * dt;
-    } else if (k['s'] || k['arrowdown']) {
-      car.speed -= car.acceleration * dt * 0.7;
+    if (joy.active) {
+      // ── Joystick: world-space direction control ──
+      // Target angle = direction of joystick in world space
+      const targetAngle = Math.atan2(joy.ny, joy.nx);
+      // Smoothly rotate car toward joystick direction
+      let angleDiff = targetAngle - car.angle;
+      // Normalize to -PI..PI
+      while (angleDiff >  Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      car.angle += angleDiff * 0.18 * dt;
+      // Accelerate based on joystick magnitude
+      const mag = Math.min(Math.sqrt(joy.nx * joy.nx + joy.ny * joy.ny), 1);
+      car.speed += car.acceleration * mag * dt;
     } else {
+      // ── Keyboard: original steering + acceleration ──
+      if ((k['a'] || k['arrowleft']) && Math.abs(car.speed) > 0.3) {
+        car.angle -= car.turnSpeed * dt * (car.speed > 0 ? 1 : -1);
+      }
+      if ((k['d'] || k['arrowright']) && Math.abs(car.speed) > 0.3) {
+        car.angle += car.turnSpeed * dt * (car.speed > 0 ? 1 : -1);
+      }
+      if (k['w'] || k['arrowup']) {
+        car.speed += car.acceleration * dt;
+      } else if (k['s'] || k['arrowdown']) {
+        car.speed -= car.acceleration * dt * 0.7;
+      } else {
+        car.speed *= Math.pow(car.friction, dt);
+      }
+    }
+
+    // Apply friction when joystick released
+    if (!joy.active && !k['w'] && !k['arrowup'] && !k['s'] && !k['arrowdown']) {
       car.speed *= Math.pow(car.friction, dt);
     }
 

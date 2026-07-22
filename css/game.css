@@ -703,6 +703,7 @@
 @media (max-width: 768px) {
   /* Hide keyboard controls hint bar on mobile */
   .game-controls-hint { display: none; }
+  .keyboard-hint { display: none !important; }
   .track-progress { display: none; }
   #minimap { display: none; }
 
