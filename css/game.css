@@ -695,73 +695,133 @@
   50%       { box-shadow: 0 8px 50px rgba(124,92,252,0.7); }
 }
 
-/* ─── MOBILE D-PAD ─── */
-.mobile-dpad {
+/* ─── MOBILE JOYSTICK ─── */
+.mobile-controls {
   display: none;
 }
 
 @media (max-width: 768px) {
-  .mobile-dpad {
+  /* Hide keyboard controls hint bar on mobile */
+  .game-controls-hint { display: none; }
+  .track-progress { display: none; }
+  #minimap { display: none; }
+
+  .mobile-controls {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     position: absolute;
     bottom: 2rem;
-    left: 1rem;
-    right: 1rem;
+    left: 1.2rem;
+    right: 1.2rem;
     z-index: 50;
     pointer-events: none;
   }
-  .mobile-dpad > * {
-    pointer-events: auto;
-  }
-  .dpad-controls {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-  .dpad-row {
-    display: flex;
-    gap: 8px;
-  }
-  .dpad-btn {
-    width: 50px;
-    height: 50px;
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.3);
-    border-bottom: 3px solid rgba(255,255,255,0.3);
-    border-radius: 12px;
-    color: white;
-    font-size: 1.2rem;
-    backdrop-filter: blur(8px);
+
+  .mobile-controls > * { pointer-events: auto; }
+
+  /* ── Joystick Zone ── */
+  .joystick-zone {
+    width: 130px;
+    height: 130px;
     display: flex;
     align-items: center;
     justify-content: center;
+    touch-action: none;
+  }
+
+  .joystick-base {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 24px rgba(124, 92, 252, 0.2), inset 0 0 16px rgba(0,0,0,0.3);
+  }
+
+  .joystick-knob {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(124,92,252,0.9), rgba(155,77,252,0.9));
+    border: 2px solid rgba(255,255,255,0.3);
+    position: absolute;
+    box-shadow: 0 4px 20px rgba(124,92,252,0.6), 0 0 0 4px rgba(124,92,252,0.15);
+    transition: box-shadow 0.1s ease;
+    will-change: transform;
+  }
+
+  .joystick-knob.active {
+    box-shadow: 0 4px 30px rgba(124,92,252,0.9), 0 0 0 6px rgba(124,92,252,0.25);
+  }
+
+  /* ── Action Buttons ── */
+  .mobile-action-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .mobile-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    border: none;
+    font-size: 1.4rem;
+    font-family: var(--font-body);
+    font-weight: 700;
+    cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
   }
-  .dpad-btn:active {
-    background: rgba(255,255,255,0.4);
-    border-bottom-width: 1px;
-    transform: translateY(2px);
+
+  .mobile-action-btn span {
+    font-size: 0.5rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 600;
   }
-  .dpad-actions {
-    display: flex;
-    gap: 12px;
+
+  .horn-btn {
+    background: rgba(240, 192, 64, 0.18);
+    border: 2px solid rgba(240, 192, 64, 0.45);
+    color: var(--sw-gold);
+    box-shadow: 0 4px 20px rgba(240,192,64,0.2);
+    backdrop-filter: blur(8px);
+    font-size: 1.2rem;
   }
-  .dpad-actions .dpad-btn {
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    font-size: 1rem;
-    font-weight: 800;
+
+  .horn-btn:active {
+    background: rgba(240, 192, 64, 0.4);
+    transform: scale(0.92);
+    box-shadow: 0 4px 30px rgba(240,192,64,0.5);
   }
-  
-  /* Hide keyboard hints and PC specific HUD elements on mobile */
-  .game-controls-hint { display: none; }
-  .track-progress { display: none; }
-  #minimap { display: none; }
-  div[style*="bottom: 2rem;"] { display: none !important; }
+
+  .enter-btn {
+    background: rgba(124, 92, 252, 0.18);
+    border: 2px solid rgba(124, 92, 252, 0.45);
+    color: #c4b5fd;
+    box-shadow: 0 4px 20px rgba(124,92,252,0.2);
+    backdrop-filter: blur(8px);
+    font-size: 1.2rem;
+  }
+
+  .enter-btn:active {
+    background: rgba(124, 92, 252, 0.4);
+    transform: scale(0.92);
+    box-shadow: 0 4px 30px rgba(124,92,252,0.5);
+  }
 }

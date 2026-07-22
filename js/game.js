@@ -163,29 +163,60 @@ class PortfolioGame {
       if (e.key === 'h' || e.key === 'H') this.stopHorn();
     });
 
-    // Mobile D-Pad Controls
-    const bindDpad = (id, key) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys[key] = true; }, { passive: false });
-      el.addEventListener('touchend', (e) => { e.preventDefault(); this.keys[key] = false; }, { passive: false });
-      el.addEventListener('mousedown', (e) => { this.keys[key] = true; });
-      el.addEventListener('mouseup', (e) => { this.keys[key] = false; });
-      el.addEventListener('mouseleave', (e) => { this.keys[key] = false; });
+    // Mobile Joystick Controls
+    const joystickZone = document.getElementById('joystick-zone');
+    const joystickKnob = document.getElementById('joystick-knob');
+    const DEAD_ZONE = 0.25;
+    const MAX_RADIUS = 33; // max px the knob can travel from center
+
+    const resetJoystick = () => {
+      this.keys['w'] = false;
+      this.keys['s'] = false;
+      this.keys['a'] = false;
+      this.keys['d'] = false;
+      if (joystickKnob) {
+        joystickKnob.style.transform = 'translate(0px, 0px)';
+        joystickKnob.classList.remove('active');
+      }
     };
 
-    bindDpad('dpad-up', 'w');
-    bindDpad('dpad-down', 's');
-    bindDpad('dpad-left', 'a');
-    bindDpad('dpad-right', 'd');
+    const handleJoystick = (touchX, touchY) => {
+      if (!joystickZone || !joystickKnob) return;
+      const rect = joystickZone.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      let dx = touchX - cx;
+      let dy = touchY - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const clamped = Math.min(dist, MAX_RADIUS);
+      const angle = Math.atan2(dy, dx);
+      const nx = (clamped / MAX_RADIUS) * Math.cos(angle); // -1 to 1
+      const ny = (clamped / MAX_RADIUS) * Math.sin(angle); // -1 to 1
+
+      // Move knob visually
+      joystickKnob.style.transform = `translate(${Math.cos(angle) * clamped}px, ${Math.sin(angle) * clamped}px)`;
+      joystickKnob.classList.add('active');
+
+      // Map to keys
+      this.keys['w'] = ny < -DEAD_ZONE;
+      this.keys['s'] = ny >  DEAD_ZONE;
+      this.keys['a'] = nx < -DEAD_ZONE;
+      this.keys['d'] = nx >  DEAD_ZONE;
+    };
+
+    if (joystickZone) {
+      joystickZone.addEventListener('touchstart', (e) => { e.preventDefault(); handleJoystick(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+      joystickZone.addEventListener('touchmove',  (e) => { e.preventDefault(); handleJoystick(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+      joystickZone.addEventListener('touchend',   (e) => { e.preventDefault(); resetJoystick(); }, { passive: false });
+    }
 
     const btnHorn = document.getElementById('dpad-horn');
     if (btnHorn) {
       btnHorn.addEventListener('touchstart', (e) => { e.preventDefault(); if (!this.hornActive) this.startHorn(); }, { passive: false });
       btnHorn.addEventListener('touchend', (e) => { e.preventDefault(); this.stopHorn(); }, { passive: false });
-      btnHorn.addEventListener('mousedown', (e) => { if (!this.hornActive) this.startHorn(); });
-      btnHorn.addEventListener('mouseup', (e) => { this.stopHorn(); });
-      btnHorn.addEventListener('mouseleave', (e) => { this.stopHorn(); });
+      btnHorn.addEventListener('mousedown', () => { if (!this.hornActive) this.startHorn(); });
+      btnHorn.addEventListener('mouseup', () => { this.stopHorn(); });
+      btnHorn.addEventListener('mouseleave', () => { this.stopHorn(); });
     }
 
     const btnEnter = document.getElementById('dpad-enter');

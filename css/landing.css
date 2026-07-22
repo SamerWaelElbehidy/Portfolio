@@ -261,6 +261,7 @@
   box-shadow: 0 8px 24px rgba(0,0,0,0.3);
   animation: float var(--duration, 6s) ease-in-out infinite;
   animation-delay: var(--delay, 0s);
+  opacity: 0.35;
 }
 
 @keyframes float {
