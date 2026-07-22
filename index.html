@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Samer Wael | Multidisciplinary Engineer</title>
+  <meta name="description"
+    content="Portfolio of Samer Wael, featuring 130+ projects spanning AI, Medical tech, Robotics, and IoT.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/landing.css">
+  <link rel="stylesheet" href="css/contact.css">
+</head>
+
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen"
+    style="position:fixed;inset:0;background:#04040e;z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity 0.6s ease;">
+    <div
+      style="color:var(--accent-violet);font-family:var(--font-display);font-size:1.5rem;font-weight:800;letter-spacing:2px;animation:pulse 1s infinite;">
+      LOADING...</div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-logo">
+      <span class="first">Samer</span> <span class="last">Wael</span>
+    </div>
+
+    <div class="search-wrapper">
+      <input type="text" id="global-search" class="search-input" placeholder="Search projects...">
+      <span class="search-icon">🔍</span>
+      <div id="search-results" class="search-results"></div>
+    </div>
+
+    <ul class="nav-links">
+      <li><a href="#home" class="nav-link active" data-section="home">Home</a></li>
+      <li><a href="#categories" class="nav-link" data-section="categories">Categories</a></li>
+      <li><a href="#featured" class="nav-link" data-section="featured">Featured</a></li>
+    </ul>
+
+    <a href="#contact" class="nav-cta">Let's Talk</a>
+  </nav>
+
+  <!-- Hero Section -->
+  <section id="home" class="hero">
+    <div class="hero-bg">
+      <div class="hero-grid"></div>
+      <div class="hero-orb-1"></div>
+      <div class="hero-orb-2"></div>
+      <div class="hero-orb-3"></div>
+      <canvas id="particle-canvas"></canvas>
+    </div>
+    <div class="tech-icons-ring"></div>
+
+    <div class="hero-content">
+      <div class="hero-eyebrow">
+        <div class="hero-eyebrow-dot"></div> Engineering the Future
+      </div>
+      <h1 class="hero-name">
+        <span class="first-name">Samer</span>
+        <span class="last-name">Wael</span>
+      </h1>
+      <p class="hero-title">
+        Bridging the gap between <strong>Software</strong> and <strong>Hardware</strong>. As an <strong>AI Engineer</strong> with over 4 years of experience, I rapidly developed 130+ innovative projects spanning AI, Medical tech, Robotics, and IoT in less than 1 year using Generative AI.
+      </p>
+
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-number gold" data-count="130" data-suffix="+">0</div>
+          <div class="hero-stat-label">Projects</div>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat">
+          <div class="hero-stat-number" data-count="9" data-suffix="">0</div>
+          <div class="hero-stat-label">Categories</div>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat">
+          <div class="hero-stat-number gold" style="font-size: 1.25rem; line-height: 1.4; letter-spacing: 0;">&lt; 1 Year</div>
+          <div class="hero-stat-label">Timeframe</div>
+        </div>
+      </div>
+
+      <div class="hero-actions">
+        <a href="#categories" class="btn btn-primary">Explore Projects</a>
+      </div>
+    </div>
+
+    <div class="scroll-indicator">
+      <div class="scroll-mouse">
+        <div class="scroll-wheel"></div>
+      </div>
+      Scroll
+    </div>
+  </section>
+
+  <!-- Categories Section -->
+  <section id="categories" class="categories-section">
+    <div class="container">
+      <div class="section-label">Domains</div>
+      <h2 class="section-title">Explore by Category</h2>
+      <p class="section-subtitle">Dive into specific areas of research and engineering.</p>
+
+      <div id="categories-grid" class="categories-grid">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Section -->
+  <section id="featured" class="featured-section">
+    <div class="container">
+      <div class="section-label">Showcase</div>
+      <h2 class="section-title">Featured Work</h2>
+      <p class="section-subtitle">A curated selection of my most complex and impactful engineering projects.</p>
+
+      <div id="featured-grid" class="featured-grid">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact" class="contact-section" style="margin-top: 4rem;">
+    <div class="container">
+      <div class="contact-grid">
+        <div class="contact-info">
+          <div class="contact-availability">
+            <div class="availability-dot"></div> Available for new opportunities
+          </div>
+          <h2 class="contact-info-title">Let's build something extraordinary.</h2>
+          <p class="contact-info-desc">I'm always open to discussing new projects, creative ideas or opportunities to be
+            part of your visions.</p>
+
+          <div class="contact-methods">
+            <a href="mailto:samer.wael.2003@gmail.com" class="contact-method">
+              <div class="contact-method-icon" style="background: rgba(124,92,252,0.1); color: var(--accent-violet);">📧
+              </div>
+              <div class="contact-method-info">
+                <div class="contact-method-label">Email</div>
+                <div class="contact-method-value">samer.wael.2003@gmail.com</div>
+              </div>
+              <div class="contact-method-arrow">→</div>
+            </a>
+
+            <a href="tel:+2015545634488" class="contact-method">
+              <div class="contact-method-icon" style="background: rgba(16,185,129,0.1); color: #10b981;">📞</div>
+              <div class="contact-method-info">
+                <div class="contact-method-label">Phone / WhatsApp</div>
+                <div class="contact-method-value">+2015545634488</div>
+              </div>
+              <div class="contact-method-arrow">→</div>
+            </a>
+          </div>
+        </div>
+
+        <div class="contact-form-card">
+          <h3 class="form-title">Send a message</h3>
+          <p class="form-subtitle">I'll get back to you as soon as possible.</p>
+          <form onsubmit="event.preventDefault(); alert('Message sent! (Simulation)');">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-input" placeholder="Your name" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" placeholder="Your email" required>
+              </div>
+              <div class="form-group full-width">
+                <label class="form-label">Message</label>
+                <textarea class="form-textarea" placeholder="How can I help you?" required></textarea>
+              </div>
+            </div>
+            <button type="submit" class="form-submit">Send Message</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-logo">Samer Wael</div>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-top:var(--space-md);">© 2026 Samer Wael. All rights
+        reserved.</p>
+    </div>
+  </footer>
+
+  <script src="js/projects.js"></script>
+  <script src="js/landing.js"></script>
+</body>
+
+</html>
