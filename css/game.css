@@ -701,6 +701,18 @@
 }
 
 @media (max-width: 768px) {
+  /* Modal full width on mobile */
+  .modal-overlay, .game-modal-overlay {
+    padding: 0.5rem;
+  }
+  .modal, .game-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    max-height: 95vh;
+    border-radius: var(--radius-lg);
+  }
+
   /* Hide keyboard controls hint bar on mobile */
   .game-controls-hint { display: none; }
   .keyboard-hint { display: none !important; }
