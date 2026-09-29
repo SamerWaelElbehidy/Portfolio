@@ -176,7 +176,7 @@ footer .wrap { justify-content: center; text-align: center; gap: 0.4rem 2rem; }
 @media (max-width: 1040px) { .nav-links { display: none; } }
 
 /* Wordmark logo */
-.logo { font-family: 'Syne', var(--font-display); font-weight: 800; font-size: 1.55rem; letter-spacing: -0.045em; gap: 0.32em; line-height: 1; align-items: baseline; }
+.logo { font-family: 'Outfit', var(--font-display); font-weight: 700; font-size: 1.7rem; letter-spacing: -0.025em; gap: 0.32em; line-height: 1; align-items: baseline; }
 .logo span { color: #fff; }
 .logo .l2 { background: linear-gradient(120deg, #b7a6ff, var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .logo:hover .l2 { filter: brightness(1.25); }
