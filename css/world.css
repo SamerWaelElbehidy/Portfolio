@@ -67,3 +67,5 @@ kbd { display: inline-block; min-width: 1.5em; padding: 0.05em 0.45em; margin-ri
 .pd ul { list-style: none; margin: 0; padding: 0; display: grid; }
 .pd li button { width: 100%; text-align: left; padding: 0.5rem 0.6rem; border: none; border-radius: 8px; background: none; font-size: 0.9rem; color: var(--text); }
 .pd li button:hover { background: rgba(255, 255, 255, 0.08); }
+
+.pd h4 button { white-space: nowrap; }
