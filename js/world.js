@@ -559,9 +559,12 @@
   const touchIn = { x: 0, y: 0, drift: false, horn: false };
   let paused = false, started = false;
 
+  // Layout-independent key names: use the physical key (e.code) so WASD works on Arabic and any other keyboard layout.
+  const CODE = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', KeyH: 'h', KeyR: 'r', KeyC: 'c', KeyM: 'm', Space: ' ', Tab: 'tab', Enter: 'enter', NumpadEnter: 'enter', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Escape: 'escape' };
+  const keyOf = (e) => CODE[e.code] || (e.key || '').toLowerCase();
   addEventListener('keydown', (e) => {
-    if (e.target && (e.target.tagName === 'INPUT')) { if (e.key === 'Escape') e.target.blur(); return; }
-    const k = e.key.toLowerCase();
+    if (e.target && e.target.tagName === 'INPUT') { if (e.key === 'Escape') e.target.blur(); return; }
+    const k = keyOf(e);
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'tab'].includes(k)) e.preventDefault();
     if (e.repeat) return;
     keys.add(k);
@@ -573,9 +576,9 @@
     else if (k === 'tab') togglePanel();
     else if (k === 'h') horn(true);
   });
-  addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); keys.delete(k); if (k === 'h') horn(false); });
+  addEventListener('keyup', (e) => { const k = keyOf(e); keys.delete(k); if (k === 'h') horn(false); });
   addEventListener('blur', () => keys.clear());
-  addEventListener('pointerdown', () => kickstart(), { once: false });
+  addEventListener('pointerdown', () => kickstart());
 
   function readInput() {
     if (paused) { input.throttle = 0; input.steer = 0; input.drift = false; return; }
