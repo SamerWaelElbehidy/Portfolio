@@ -24,8 +24,25 @@
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('open')) { e.stopPropagation(); close(); } }, true);
   }
 
+  /* Toasts: reward messages ------------------------------------------- */
+  let toasts;
+  function toast(html, color, ms) {
+    if (!toasts) { toasts = el('div', 'toasts'); toasts.setAttribute('aria-live', 'polite'); document.body.appendChild(toasts); }
+    const t = el('div', 'toast', html); if (color) t.style.setProperty('--c', color);
+    toasts.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('in'));
+    setTimeout(() => { t.classList.remove('in'); setTimeout(() => t.remove(), 500); }, ms || 3800);
+  }
+  const coin = '<i class="coin"></i>';
+  function rewardToast(r) {
+    const P = window.Progress;
+    toast(`${coin}<div><b>+${P.fmt(r.reward)}</b><span>${esc(r.project.name)} discovered · ${r.count} / ${r.total}</span></div>`, cat(r.project.cats[0]).color);
+    r.bonuses.forEach((b, i) => setTimeout(() => toast(`${coin}<div><b>+${P.fmt(b.amount)} bonus</b><span>${esc(b.label)}</span></div>`, b.color, 4600), 500 + i * 700));
+  }
+
   function open(p, opts) {
     ensure();
+    if (window.Progress) { const r = window.Progress.discover(p); if (r) { rewardToast(r); if (opts && opts.onDiscover) opts.onDiscover(r); } }
     lastFocus = document.activeElement;
     onCloseCb = opts && opts.onClose;
     const main = cat(p.cats[0]);
@@ -61,5 +78,5 @@
     if (onCloseCb) { const f = onCloseCb; onCloseCb = null; f(); }
   }
 
-  window.PortfolioUI = { open, close, el, esc, isOpen: () => !!overlay && overlay.classList.contains('open') };
+  window.PortfolioUI = { open, close, el, esc, toast, isOpen: () => !!overlay && overlay.classList.contains('open') };
 })();

@@ -48,7 +48,7 @@
 
   function card(p, big) {
     const c = cat(p.cats[0]);
-    const b = el('button', 'card rv');
+    const b = el('button', 'card rv' + (Progress.isFound(p.id) ? ' found' : ''));
     b.style.setProperty('--c', c.color);
     b.type = 'button';
     b.setAttribute('aria-label', 'Open ' + p.name);
@@ -62,7 +62,7 @@
       <p>${esc(p.tagline)}</p>
       <div class="foot">${p.stack.slice(0, 4).map((t) => `<span class="tech">${esc(t)}</span>`).join('')}</div>`;
     b.appendChild(body);
-    b.addEventListener('click', () => open(p));
+    b.addEventListener('click', () => open(p, { onDiscover: () => b.classList.add('found') }));
     return b;
   }
 
@@ -174,4 +174,22 @@
     if (!reduce) requestAnimationFrame(frame);
   }
   frame();
+})();
+
+/* Game layer: wallet in the nav, quest bar above the explorer */
+(function () {
+  const P = window.Progress, $ = (s) => document.querySelector(s);
+  $('#w-total').textContent = P.TOTAL;
+  const quest = document.createElement('div'); quest.className = 'quest rv in';
+  quest.innerHTML = '<small id="q-txt"></small><div class="q-bar"><i id="q-fill"></i></div><span class="w-coins"><i class="coin"></i><b id="q-coins">0</b></span>';
+  const tools = document.querySelector('#work .tools'); tools.parentNode.insertBefore(quest, tools);
+  function sync() {
+    const n = P.count();
+    $('#w-count').textContent = n; $('#w-coins').textContent = P.fmt(P.coins());
+    $('#w-fill').style.width = (n / P.TOTAL * 100) + '%';
+    $('#q-txt').textContent = n + ' of ' + P.TOTAL + ' projects discovered — open one to earn coins, spend them in the garage';
+    $('#q-fill').style.width = (n / P.TOTAL * 100) + '%'; $('#q-coins').textContent = P.fmt(P.coins());
+  }
+  sync(); P.on(sync);
+  P.on(() => document.querySelectorAll('.card').forEach((c) => { /* found state is set on click */ }));
 })();

@@ -143,6 +143,7 @@
   const ROAD_W = 11;
   const PLAZA_R = 22;
   const N = categories.length;
+  const GARAGE = { x: 15.7, z: -43.2 };
   const RING = 178;
   const districts = categories.map((c, k) => {
     const list = byCat(c.id);
@@ -402,6 +403,7 @@
   }
   function free(x, z, margin) {
     if (Math.hypot(x, z) < PLAZA_R + 8) return false;
+    if (Math.hypot(x - GARAGE.x, z - GARAGE.z) < 16) return false;
     for (const d of districts) if (Math.hypot(x - d.C.x, z - d.C.z) < d.padR + margin) return false;
     for (const s of roadSegments) if (distSeg(x, z, s.a, s.b) < ROAD_W / 2 + margin) return false;
     return true;
@@ -485,54 +487,110 @@
   const carBody = new THREE.Group(); carRoot.add(carBody); // tilts
   const wheels = [];
   const stopLights = [];
-  let headBeams;
-  { const paint = new THREE.MeshStandardMaterial({ color: 0xff7a2e, roughness: 0.3, metalness: 0.55 });
+  let headBeams, beamMat, nitroFlames, neonMesh, carLen = 4.5, look = {};
+  const SH = window.SHOP;
+  const slotItems = (id) => SH.slots.find((x) => x.id === id).items;
+  const shopItem = (slotId, id) => slotItems(slotId).find((i) => i.id === id) || slotItems(slotId)[0];
+  const isOwned = (slotId, item) => item.price === 0 || Progress.owns(slotId + ':' + item.id);
+  const BODY = {
+    classic: { W: 2.1, lowH: 0.62, lowY: 0.72, len: 4.5, cabinH: 0.62, cabinZ: -0.2, cabinL: 2.0, wr: 0.42, track: 1.06, wz: 1.4 },
+    sport: { W: 2.26, lowH: 0.5, lowY: 0.6, len: 4.7, cabinH: 0.5, cabinZ: -0.45, cabinL: 1.9, wr: 0.42, track: 1.14, wz: 1.45 },
+    pickup: { W: 2.16, lowH: 0.8, lowY: 0.98, len: 4.9, cabinH: 0.74, cabinZ: 0.55, cabinL: 1.8, wr: 0.52, track: 1.1, wz: 1.55 }
+  };
+  const neonTex = canvasTex(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); });
+  const neonLight = new THREE.PointLight(0xffffff, 0, 9); neonLight.position.y = 0.5; carRoot.add(neonLight);
+
+  function readLook(over) {
+    const P = Progress; const pick = (slot, d) => { const id = P.equipped(slot, d); const it = shopItem(slot, id); return isOwned(slot, it) ? it.id : d; };
+    return Object.assign({ paint: pick('paint', 'orange'), body: pick('body', 'classic'), rims: pick('rims', 'silver'), neon: pick('neon', 'off'), lights: pick('lights', 'warm'), horn: pick('horn', 'classic'), smoke: pick('smoke', 'white') }, over || {});
+  }
+
+  function buildCar(l) {
+    look = l;
+    while (carBody.children.length) carBody.remove(carBody.children[0]);
+    wheels.forEach((w) => carRoot.remove(w.pivot)); wheels.length = 0; stopLights.length = 0;
+    if (neonMesh) { carRoot.remove(neonMesh); neonMesh = null; }
+    const B = BODY[l.body] || BODY.classic; carLen = B.len;
+    const pc = shopItem('paint', l.paint);
+    const paint = new THREE.MeshStandardMaterial({ color: pc.color, roughness: pc.rough != null ? pc.rough : 0.3, metalness: pc.metal != null ? pc.metal : 0.55 });
     const dark = mat(0x0d0f18, { roughness: 0.4, metalness: 0.4 });
     const glass = new THREE.MeshStandardMaterial({ color: 0x14202f, roughness: 0.08, metalness: 0.9 });
     const chrome = mat(0xd8dbe8, { roughness: 0.2, metalness: 0.9 });
-    // lower body
-    const low = box(2.1, 0.62, 4.5, paint); low.position.y = 0.72; carBody.add(low);
-    const hood = box(1.96, 0.16, 1.5, paint); hood.position.set(0, 1.06, 1.35); hood.rotation.x = 0.07; carBody.add(hood);
-    const trunk = box(1.96, 0.16, 1.1, paint); trunk.position.set(0, 1.06, -1.6); trunk.rotation.x = -0.05; carBody.add(trunk);
+    const top = B.lowY + B.lowH / 2;
+    const low = box(B.W, B.lowH, B.len, paint); low.position.y = B.lowY; carBody.add(low);
+    const hoodL = l.body === 'pickup' ? 1.4 : 1.5;
+    const hood = box(B.W - 0.14, 0.16, hoodL, paint); hood.position.set(0, top + 0.03, B.len / 2 - hoodL / 2 - 0.1); hood.rotation.x = 0.07; carBody.add(hood);
+    if (l.body !== 'pickup') { const trunk = box(B.W - 0.14, 0.16, 1.1, paint); trunk.position.set(0, top + 0.03, -B.len / 2 + 0.65); trunk.rotation.x = -0.05; carBody.add(trunk); }
     // cabin (tapered)
-    const cg = new THREE.BoxGeometry(1.8, 0.62, 2.0); const pa = cg.attributes.position;
+    const cg = new THREE.BoxGeometry(B.W - 0.3, B.cabinH, B.cabinL); const pa = cg.attributes.position;
     for (let i = 0; i < pa.count; i++) if (pa.getY(i) > 0) { pa.setX(i, pa.getX(i) * 0.82); pa.setZ(i, pa.getZ(i) * (pa.getZ(i) > 0 ? 0.72 : 0.9)); }
     cg.computeVertexNormals();
-    const cabin = new THREE.Mesh(cg, glass); cabin.position.set(0, 1.4, -0.2); carBody.add(cabin);
-    const roof = box(1.46, 0.07, 1.5, paint); roof.position.set(0, 1.74, -0.28); carBody.add(roof);
-    // stripe
-    const stripe = box(0.34, 0.02, 4.51, mat(0xffffff, { roughness: 0.4 })); stripe.position.set(0, 1.135, 0); carBody.add(stripe);
-    // bumpers, splitter, diffuser
-    const fb = box(2.1, 0.3, 0.3, dark); fb.position.set(0, 0.48, 2.3); carBody.add(fb);
-    const rb = box(2.1, 0.3, 0.3, dark); rb.position.set(0, 0.48, -2.3); carBody.add(rb);
-    const grille = box(1.1, 0.22, 0.06, chrome); grille.position.set(0, 0.78, 2.27); carBody.add(grille);
-    // spoiler
-    const sp = box(1.9, 0.08, 0.5, dark); sp.position.set(0, 1.5, -2.05); carBody.add(sp);
-    [-0.8, 0.8].forEach((x) => { const s = box(0.08, 0.4, 0.3, dark); s.position.set(x, 1.28, -2.0); carBody.add(s); });
-    // mirrors
-    [-1, 1].forEach((sd) => { const m = box(0.12, 0.14, 0.24, paint); m.position.set(sd * 1.0, 1.28, 0.55); carBody.add(m); });
-    // headlights
-    const hm = new THREE.MeshBasicMaterial({ color: 0xfff3c2, toneMapped: false });
-    [-0.72, 0.72].forEach((x) => { const h = box(0.42, 0.18, 0.08, hm); h.position.set(x, 0.86, 2.27); carBody.add(h); });
+    const cabin = new THREE.Mesh(cg, glass); cabin.position.set(0, top + B.cabinH / 2 + 0.05, B.cabinZ); carBody.add(cabin);
+    const roof = box(B.W - 0.64, 0.07, B.cabinL - 0.5, paint); roof.position.set(0, top + B.cabinH + 0.08, B.cabinZ - 0.08); carBody.add(roof);
+    if (l.body !== 'pickup') { const stripe = box(0.34, 0.02, B.len + 0.01, mat(0xffffff, { roughness: 0.4 })); stripe.position.set(0, top + 0.115, 0); carBody.add(stripe); }
+    // bumpers, grille
+    const fb = box(B.W, 0.3, 0.3, dark); fb.position.set(0, B.lowY - 0.24, B.len / 2 + 0.05); carBody.add(fb);
+    const rb = box(B.W, 0.3, 0.3, dark); rb.position.set(0, B.lowY - 0.24, -B.len / 2 - 0.05); carBody.add(rb);
+    const grille = box(1.1, 0.22, 0.06, chrome); grille.position.set(0, B.lowY + 0.06, B.len / 2 + 0.02); carBody.add(grille);
+    // body-specific parts
+    if (l.body === 'classic') {
+      const sp = box(1.9, 0.08, 0.5, dark); sp.position.set(0, top + 0.47, -B.len / 2 + 0.2); carBody.add(sp);
+      [-0.8, 0.8].forEach((x) => { const s2 = box(0.08, 0.4, 0.3, dark); s2.position.set(x, top + 0.25, -B.len / 2 + 0.25); carBody.add(s2); });
+    } else if (l.body === 'sport') {
+      const wing = box(2.1, 0.08, 0.6, dark); wing.position.set(0, top + 0.72, -B.len / 2 + 0.3); carBody.add(wing);
+      [-0.8, 0.8].forEach((x) => { const s2 = box(0.08, 0.62, 0.3, dark); s2.position.set(x, top + 0.4, -B.len / 2 + 0.3); carBody.add(s2); });
+      [-1, 1].forEach((sd) => { const sk = box(0.1, 0.16, 2.6, dark); sk.position.set(sd * (B.W / 2), B.lowY - 0.22, 0); carBody.add(sk); });
+      const splitter = box(B.W + 0.1, 0.06, 0.5, dark); splitter.position.set(0, B.lowY - 0.34, B.len / 2 + 0.2); carBody.add(splitter);
+    } else {
+      const bedL = 1.95, bz = -B.len / 2 + bedL / 2 + 0.05;
+      const floor = box(B.W - 0.2, 0.1, bedL, dark); floor.position.set(0, top + 0.02, bz); carBody.add(floor);
+      [-1, 1].forEach((sd) => { const w = box(0.1, 0.42, bedL, paint); w.position.set(sd * (B.W / 2 - 0.15), top + 0.24, bz); carBody.add(w); });
+      const gate = box(B.W - 0.2, 0.42, 0.1, paint); gate.position.set(0, top + 0.24, -B.len / 2 + 0.05); carBody.add(gate);
+      const bar = box(B.W - 0.5, 0.08, 0.08, chrome); bar.position.set(0, top + 0.95, B.cabinZ - B.cabinL / 2 - 0.05); carBody.add(bar);
+    }
+    [-1, 1].forEach((sd) => { const m = box(0.12, 0.14, 0.24, paint); m.position.set(sd * (B.W / 2 - 0.05), top + 0.25, B.cabinZ + B.cabinL / 2 - 0.3); carBody.add(m); });
+    // lights
+    const lc = shopItem('lights', l.lights).color;
+    const hm = new THREE.MeshBasicMaterial({ color: lc, toneMapped: false });
+    [-0.72, 0.72].forEach((x) => { const h = box(0.42, 0.18, 0.08, hm); h.position.set(x, B.lowY + 0.14, B.len / 2 + 0.02); carBody.add(h); });
     const tm = new THREE.MeshBasicMaterial({ color: 0x8a1420, toneMapped: false });
-    [-0.72, 0.72].forEach((x) => { const t = box(0.5, 0.16, 0.08, tm); t.position.set(x, 0.9, -2.27); carBody.add(t); stopLights.push(t); });
-    // plate
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.22), new THREE.MeshBasicMaterial({ map: canvasTex(256, 64, (g, w, h) => { g.fillStyle = '#f6f6f2'; g.fillRect(0, 0, w, h); g.fillStyle = '#12224a'; g.fillRect(0, 0, w, 10); g.fillStyle = '#12224a'; g.font = `700 38px ${FONT}`; g.textAlign = 'center'; g.fillText('SAMER', w / 2, 52); }) }));
-    plate.position.set(0, 0.6, -2.46); plate.rotation.y = Math.PI; carBody.add(plate);
-    // beams
-    headBeams = new THREE.Group(); const beamMat = new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
-    [-0.72, 0.72].forEach((x) => { const cone = new THREE.Mesh(new THREE.ConeGeometry(1.7, 9, 16, 1, true), beamMat); cone.rotation.x = -Math.PI / 2; cone.position.set(x, 0.84, 2.3 + 4.5); headBeams.add(cone); });
-    carBody.add(headBeams);
+    [-0.72, 0.72].forEach((x) => { const t = box(0.5, 0.16, 0.08, tm.clone()); t.position.set(x, B.lowY + 0.18, -B.len / 2 - 0.02); carBody.add(t); stopLights.push(t); });
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.22), new THREE.MeshBasicMaterial({ map: canvasTex(256, 64, (g, w, h) => { g.fillStyle = '#f6f6f2'; g.fillRect(0, 0, w, h); g.fillStyle = '#12224a'; g.fillRect(0, 0, w, 10); g.font = `700 38px ${FONT}`; g.textAlign = 'center'; g.fillText('SAMER', w / 2, 52); }) }));
+    plate.position.set(0, B.lowY - 0.1, -B.len / 2 - 0.2); plate.rotation.y = Math.PI; carBody.add(plate);
     shadowAll(carBody, true);
+    // beams + nitro flames (never cast shadows)
+    headBeams = new THREE.Group(); beamMat = new THREE.MeshBasicMaterial({ color: lc, transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+    [-0.72, 0.72].forEach((x) => { const cone = new THREE.Mesh(new THREE.ConeGeometry(1.7, 9, 16, 1, true), beamMat); cone.rotation.x = -Math.PI / 2; cone.position.set(x, B.lowY + 0.12, B.len / 2 + 4.6); headBeams.add(cone); });
+    carBody.add(headBeams);
+    nitroFlames = new THREE.Group(); nitroFlames.visible = false;
+    [-0.55, 0.55].forEach((x) => {
+      const outer = new THREE.Mesh(new THREE.ConeGeometry(0.28, 2.6, 10), new THREE.MeshBasicMaterial({ color: 0x4aa8ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      outer.rotation.x = -Math.PI / 2; outer.position.set(x, B.lowY - 0.1, -B.len / 2 - 1.4);
+      const inner = new THREE.Mesh(new THREE.ConeGeometry(0.14, 1.6, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      inner.rotation.x = -Math.PI / 2; inner.position.set(x, B.lowY - 0.1, -B.len / 2 - 0.9);
+      nitroFlames.add(outer, inner);
+    });
+    carBody.add(nitroFlames);
     // wheels
-    const tireM = mat(0x0b0c12, { roughness: 0.9 }), rimM = mat(0xc9ceea, { roughness: 0.25, metalness: 0.9 });
-    [[-1.06, 1.4, true], [1.06, 1.4, true], [-1.06, -1.4, false], [1.06, -1.4, false]].forEach(([x, z, front]) => {
-      const pivot = new THREE.Group(); pivot.position.set(x, 0.42, z); carRoot.add(pivot);
+    const tireM = mat(0x0b0c12, { roughness: 0.9 }), rimM = mat(shopItem('rims', l.rims).color, { roughness: 0.25, metalness: 0.9 });
+    [[-B.track, B.wz, true], [B.track, B.wz, true], [-B.track, -B.wz, false], [B.track, -B.wz, false]].forEach(([x, z, front]) => {
+      const pivot = new THREE.Group(); pivot.position.set(x, B.wr, z); carRoot.add(pivot);
       const spin = new THREE.Group(); pivot.add(spin);
-      const tire = cyl(0.42, 0.42, 0.34, 20, tireM); tire.rotation.z = Math.PI / 2; spin.add(tire);
-      const rim = cyl(0.26, 0.26, 0.36, 12, rimM); rim.rotation.z = Math.PI / 2; spin.add(rim);
-      for (let i = 0; i < 5; i++) { const sp = box(0.37, 0.07, 0.42, rimM); sp.rotation.x = (i / 5) * Math.PI; spin.add(sp); }
-      shadowAll(pivot, true); wheels.push({ pivot, spin, front }); }); }
+      const tire = cyl(B.wr, B.wr, 0.34, 20, tireM); tire.rotation.z = Math.PI / 2; spin.add(tire);
+      const rim = cyl(B.wr * 0.62, B.wr * 0.62, 0.36, 12, rimM); rim.rotation.z = Math.PI / 2; spin.add(rim);
+      for (let i = 0; i < 5; i++) { const sp = box(0.37, 0.07, B.wr, rimM); sp.rotation.x = (i / 5) * Math.PI; spin.add(sp); }
+      shadowAll(pivot, true); wheels.push({ pivot, spin, front });
+    });
+    // underglow
+    const nc = shopItem('neon', l.neon);
+    if (nc.color) {
+      const col = nc.color === 'rainbow' ? 0xff00ff : nc.color;
+      neonMesh = new THREE.Mesh(new THREE.PlaneGeometry(B.W + 1.8, B.len + 1.8), new THREE.MeshBasicMaterial({ map: neonTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      neonMesh.rotation.x = -Math.PI / 2; neonMesh.position.y = 0.09; carRoot.add(neonMesh);
+      neonLight.color.set(col); neonLight.intensity = 1.6;
+    } else neonLight.intensity = 0;
+  }
+  buildCar(readLook());
 
   // Car physics state
   const car = { x: 0, z: 14, h: Math.PI, vx: 0, vz: 0, yaw: 0, steer: 0, lat: 0, long: 0, speed: 0, drift: 0, pitch: 0, roll: 0, bounce: 0 };
@@ -555,12 +613,12 @@
   /*  Input                                                              */
   /* ------------------------------------------------------------------ */
   const keys = new Set();
-  const input = { throttle: 0, steer: 0, drift: false, horn: false };
+  const input = { throttle: 0, steer: 0, drift: false, horn: false, nitro: false };
   const touchIn = { x: 0, y: 0, drift: false, horn: false };
   let paused = false, started = false;
 
   // Layout-independent key names: use the physical key (e.code) so WASD works on Arabic and any other keyboard layout.
-  const CODE = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', KeyH: 'h', KeyR: 'r', KeyC: 'c', KeyM: 'm', Space: ' ', Tab: 'tab', Enter: 'enter', NumpadEnter: 'enter', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Escape: 'escape' };
+  const CODE = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', KeyH: 'h', KeyR: 'r', KeyC: 'c', KeyM: 'm', Space: ' ', Tab: 'tab', Enter: 'enter', NumpadEnter: 'enter', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Escape: 'escape', ShiftLeft: 'shift', ShiftRight: 'shift' };
   const keyOf = (e) => CODE[e.code] || (e.key || '').toLowerCase();
   addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'INPUT') { if (e.key === 'Escape') e.target.blur(); return; }
@@ -588,7 +646,7 @@
     if (keys.has('a') || keys.has('arrowleft')) s += 1;
     if (keys.has('d') || keys.has('arrowright')) s -= 1;
     if (IS_TOUCH || Math.abs(touchIn.x) + Math.abs(touchIn.y) > 0) { if (Math.abs(touchIn.y) > 0.12) t = clamp(touchIn.y, -1, 1); if (Math.abs(touchIn.x) > 0.1) s = -clamp(touchIn.x, -1, 1); }
-    input.throttle = t; input.steer = s; input.drift = keys.has(' ') || touchIn.drift;
+    input.throttle = t; input.steer = s; input.drift = keys.has(' ') || touchIn.drift; input.nitro = keys.has('shift') || touchIn.nitro;
     if (touchIn.horn) horn(true);
   }
 
@@ -602,7 +660,7 @@
     const end = (e) => { if (e.pointerId !== pid) return; pid = null; touchIn.x = touchIn.y = 0; knob.style.transform = ''; };
     stick.addEventListener('pointerup', end); stick.addEventListener('pointercancel', end);
     const hold = (id, prop, cb) => { const b = $(id); b.addEventListener('pointerdown', (e) => { e.preventDefault(); touchIn[prop] = true; cb && cb(true); kickstart(); }); const up = () => { touchIn[prop] = false; cb && cb(false); }; b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up); };
-    hold('#t-drift', 'drift'); hold('#t-horn', 'horn', horn);
+    hold('#t-drift', 'drift'); hold('#t-horn', 'horn', horn); hold('#t-nitro', 'nitro');
     $('#t-open').addEventListener('click', openNear);
   }
 
@@ -622,7 +680,6 @@
     } catch (e) { actx = null; }
   }
   function kickstart() { if (!started) { started = true; $('#keys').classList.add('fade'); setTimeout(() => $('#keys').style.display = 'none', 1200); } initAudio(); if (actx && actx.state === 'suspended') actx.resume(); }
-  function horn(on) { if (hornNodes) hornNodes.gain.setTargetAtTime(on ? 0.12 : 0, actx.currentTime, 0.02); }
   function thump(v) { if (!actx || !soundOn) return; const b = actx.createBuffer(1, 2400, 22050), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / 500); const s = actx.createBufferSource(); s.buffer = b; const g = actx.createGain(); g.gain.value = clamp(v / 20, 0.05, 0.6); const f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500; s.connect(f); f.connect(g); g.connect(master); s.start(); }
   function toggleSound() { soundOn = !soundOn; $('#btn-snd').classList.toggle('off', !soundOn); if (master) master.gain.setTargetAtTime(soundOn ? 0.5 : 0, actx.currentTime, 0.05); }
   $('#btn-snd').addEventListener('click', () => { kickstart(); toggleSound(); });
@@ -630,7 +687,7 @@
   /* ------------------------------------------------------------------ */
   /*  Physics step                                                       */
   /* ------------------------------------------------------------------ */
-  const MAX_SPEED = 30, ACC = 24, BRAKE = 44, REV_MAX = 9;
+  let MAX_SPEED = 30, ACC = 24; const BRAKE = 44, REV_MAX = 9;
   const tmp = [];
   const carCircles = [[0, 1.35], [0, 0], [0, -1.35]];
   let hitCool = 0, nearest = null;
@@ -639,8 +696,10 @@
     const fx = Math.sin(car.h), fz = Math.cos(car.h), rx = Math.cos(car.h), rz = -Math.sin(car.h);
     let vLong = car.vx * fx + car.vz * fz, vLat = car.vx * rx + car.vz * rz;
     const t = input.throttle;
+    const boost = nitro.on, maxNow = MAX_SPEED * (boost ? 1.5 : 1), accNow = ACC * (boost ? 2.3 : 1);
     // longitudinal
-    if (t > 0) { vLong += (vLong < -0.5 ? BRAKE * 1.5 : ACC * (1 - clamp(vLong / MAX_SPEED, 0, 1))) * t * dt; }
+    if (t > 0) { vLong += (vLong < -0.5 ? BRAKE * 1.5 : accNow * (1 - clamp(vLong / maxNow, 0, 1))) * t * dt; }
+    if (boost && t <= 0 && vLong > -1) vLong += accNow * (1 - clamp(vLong / maxNow, 0, 1)) * dt;
     else if (t < 0) { if (vLong > 0.6) vLong -= BRAKE * -t * dt; else vLong = Math.max(vLong + ACC * 0.5 * t * dt, -REV_MAX); }
     vLong -= vLong * 0.16 * dt; if (t === 0) vLong -= Math.sign(vLong) * Math.min(Math.abs(vLong), 3.2 * dt);
     if (input.drift) vLong -= vLong * 0.4 * dt;
@@ -649,13 +708,13 @@
     const target = input.steer; car.steer = damp(car.steer, target, target === 0 ? 10 : 7, dt);
     const speedK = 1 / (1 + Math.abs(vLong) / 26);
     const steerAng = car.steer * 0.62 * speedK;
-    let yawT = (vLong * Math.tan(steerAng)) / 2.7; if (input.drift) yawT *= 1.4;
+    let yawT = (vLong * Math.tan(steerAng)) / 2.7; if (input.drift && upg.drift) yawT *= 1.4;
     yawT = clamp(yawT, -2.5, 2.5);
     car.yaw = damp(car.yaw, yawT, 9, dt);
     car.h += car.yaw * dt;
     // grip
     const slip = Math.abs(vLat);
-    const grip = input.drift ? 1.6 : clamp(9.5 - Math.abs(car.steer * vLong) * 0.12, 4.5, 9.5);
+    const grip = input.drift ? (upg.drift ? 1.6 : 6.5) : clamp(9.5 - Math.abs(car.steer * vLong) * 0.12, 4.5, 9.5);
     vLat *= Math.exp(-grip * dt);
     car.drift = clamp(slip / 6, 0, 1);
     // recompose
@@ -731,6 +790,13 @@
   function toggleCam() { camMode = (camMode + 1) % CAMS.length; }
   $('#btn-cam').addEventListener('click', toggleCam);
   function updateCamera(dt) {
+    if (shopOpen) {
+      showT += dt * 0.35; const r = 10.5;
+      camera.position.x = damp(camera.position.x, car.x + Math.sin(showT) * r, 3, dt); camera.position.z = damp(camera.position.z, car.z + Math.cos(showT) * r, 3, dt); camera.position.y = damp(camera.position.y, IS_TOUCH ? 4.4 : 3.4, 3, dt);
+      const off = IS_TOUCH ? 0 : -3.4; camLook.set(car.x + Math.cos(showT) * off, IS_TOUCH ? -0.4 : 0.9, car.z - Math.sin(showT) * off); camera.lookAt(camLook);
+      if (Math.abs(camera.fov - 46) > 0.1) { camera.fov = damp(camera.fov, 46, 4, dt); camera.updateProjectionMatrix(); }
+      return;
+    }
     const cm = CAMS[camMode];
     // follow direction of travel when moving fast, else heading
     const sp = Math.hypot(car.vx, car.vz);
@@ -745,7 +811,7 @@
     camera.position.x = damp(camera.position.x, tx, 6, dt); camera.position.y = damp(camera.position.y, ty, 5, dt); camera.position.z = damp(camera.position.z, tz, 6, dt);
     camLook.set(car.x + fx * cm.look, 1.4, car.z + fz * cm.look);
     camera.lookAt(camLook);
-    const fov = 54 + clamp(sp / MAX_SPEED, 0, 1) * 11 + (camMode === 2 ? 6 : 0);
+    const fov = 54 + clamp(sp / MAX_SPEED, 0, 1) * 11 + (camMode === 2 ? 6 : 0) + (nitro.on ? 9 : 0);
     if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = damp(camera.fov, fov, 4, dt); camera.updateProjectionMatrix(); }
   }
 
@@ -756,7 +822,7 @@
   const promptTxt = el.prompt.querySelector('.txt');
   let currentDistrict = null, bannerT = 0;
 
-  function openNear() { if (paused || !nearest) return; paused = true; horn(false); UI.open(nearest.p, { onClose: () => { paused = false; } }); }
+  function openNear() { if (paused) return; if (!nearest && nearGarage) { openShop(); return; } if (!nearest) return; setPause('modal', true); horn(false); UI.open(nearest.p, { onClose: () => setPause('modal', false), onDiscover: (r) => markFound(r.project.id) }); }
   el.prompt.addEventListener('click', openNear);
   function respawn() { resetCar(-10, 13, Math.PI * 0.62); camAngle = car.h; }
 
@@ -777,10 +843,11 @@
       const u = lm.em.userData; if (u.gear) u.gear.rotation.z += dt * 1.2; if (u.orb) u.orb.rotation.y += dt * 2; if (u.w) u.w.rotation.x += dt * 0.7;
     }
     nearest = best && bd < 8.5 * 8.5 ? best : null;
-    const show = !!nearest && !paused;
-    if (show) { promptTxt.textContent = nearest.p.name; el.prompt.style.setProperty('--c', nearest.d.cat.color); }
+    nearGarage = Math.hypot(car.x - GARAGE.fx, car.z - GARAGE.fz) < 9;
+    const show = (!!nearest || nearGarage) && !paused;
+    if (show) { if (nearest) { promptTxt.textContent = nearest.p.name; el.prompt.style.setProperty('--c', nearest.d.cat.color); } else { promptTxt.textContent = 'Garage — customize your car'; el.prompt.style.setProperty('--c', '#ffd23f'); } }
     el.prompt.classList.toggle('show', show); el.prompt.hidden = false; el.prompt.style.pointerEvents = show ? 'auto' : 'none';
-    if (IS_TOUCH) $('#t-open').style.opacity = nearest ? 1 : 0.45;
+    if (IS_TOUCH) $('#t-open').style.opacity = (nearest || nearGarage) ? 1 : 0.45;
 
     // district banner
     let inD = null; for (const d of districts) if (Math.hypot(car.x - d.C.x, car.z - d.C.z) < d.padR) { inD = d; break; }
@@ -822,11 +889,251 @@
       if (!items.length) return;
       const box = UI.el('div', 'pd'); const h = UI.el('h4', null, `<i style="background:${d.cat.color}"></i>${UI.esc(d.cat.name)}<button>Drive there →</button>`); h.style.setProperty('--c', d.cat.color);
       h.querySelector('button').addEventListener('click', () => teleportDistrict(d)); box.appendChild(h);
-      const ul = UI.el('ul'); items.forEach((l) => { const li = UI.el('li'); const b = UI.el('button', null, UI.esc(l.p.name)); b.addEventListener('click', () => teleportTo(l)); li.appendChild(b); ul.appendChild(li); }); box.appendChild(ul); plist.appendChild(box);
+      const ul = UI.el('ul'); items.forEach((l) => { const li = UI.el('li'); const b = UI.el('button', null, (Progress.isFound(l.p.id) ? '✓ ' : '') + UI.esc(l.p.name)); b.addEventListener('click', () => teleportTo(l)); li.appendChild(b); ul.appendChild(li); }); box.appendChild(ul); plist.appendChild(box);
     });
   }
-  function togglePanel(force) { const open = force == null ? !panel.classList.contains('open') : force; panel.classList.toggle('open', open); panel.setAttribute('aria-hidden', String(!open)); paused = open || UI.isOpen(); if (open) { renderPanel(); if (!IS_TOUCH) setTimeout(() => pq.focus(), 350); } else pq.blur(); }
+  function togglePanel(force) { const open = force == null ? !panel.classList.contains('open') : force; panel.classList.toggle('open', open); panel.setAttribute('aria-hidden', String(!open)); if (open && shopOpen) closeShop(); setPause('panel', open); if (open) { renderPanel(); if (!IS_TOUCH) setTimeout(() => pq.focus(), 350); } else pq.blur(); }
   $('#btn-map').addEventListener('click', () => togglePanel()); $('#panel-x').addEventListener('click', () => togglePanel(false)); pq.addEventListener('input', renderPanel);
+
+  /* ==================================================================== */
+  /*  Game layer: coins, upgrades, garage, rewards                         */
+  /* ==================================================================== */
+  const upg = { drift: false, nitro: 0, engine: 0, flames: false, magnet: false };
+  const nitro = { fuel: 0, cap: 0, idle: 0, on: false };
+  const levelOf = (id, n) => { let l = 0; for (let i = 1; i <= n; i++) if (Progress.owns(id + ':' + i)) l = i; return l; };
+  const upgradeDef = (id) => SH.upgrades.find((u) => u.id === id);
+  function refreshUpgrades(refill) {
+    upg.drift = Progress.owns('drift:1'); upg.flames = Progress.owns('flames:1'); upg.magnet = Progress.owns('magnet:1');
+    upg.nitro = levelOf('nitro', 3); upg.engine = levelOf('engine', 3);
+    const e = upg.engine ? upgradeDef('engine').levels[upg.engine - 1] : { speed: 1, acc: 1 };
+    MAX_SPEED = 30 * e.speed; ACC = 24 * e.acc;
+    nitro.cap = upg.nitro ? upgradeDef('nitro').levels[upg.nitro - 1].tank : 0;
+    nitro.fuel = refill ? nitro.cap : Math.min(nitro.fuel, nitro.cap);
+  }
+  refreshUpgrades(true);
+
+  const pauseFlags = { panel: false, shop: false, modal: false };
+  function setPause(k, v) { pauseFlags[k] = v; paused = pauseFlags.panel || pauseFlags.shop || pauseFlags.modal; }
+
+  /* Sounds --------------------------------------------------------------- */
+  function tone(freq, dur, type, vol, delay) {
+    if (!actx || !soundOn) return; const t0 = actx.currentTime + (delay || 0);
+    const o = actx.createOscillator(), g = actx.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.2, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  const chime = () => { tone(988, 0.12, 'sine', 0.18); tone(1319, 0.22, 'sine', 0.16, 0.07); };
+  const popSound = () => { tone(120, 0.12, 'square', 0.2); tone(80, 0.18, 'sawtooth', 0.15, 0.02); };
+  let hornH = null;
+  function makeHorn(id) {
+    const g = actx.createGain(); g.gain.value = 0.12; g.connect(master); const osc = []; let timer = null;
+    const add = (type, f) => { const o = actx.createOscillator(); o.type = type; o.frequency.value = f; o.connect(g); o.start(); osc.push(o); return o; };
+    if (id === 'air') { g.gain.value = 0.2; add('sawtooth', 165); add('sawtooth', 207); add('square', 82); }
+    else if (id === 'siren') { const o = add('square', 660); g.gain.value = 0.09; let hi = false; timer = setInterval(() => { hi = !hi; o.frequency.setTargetAtTime(hi ? 900 : 660, actx.currentTime, 0.04); }, 340); }
+    else if (id === 'melody') { g.gain.value = 0; [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.16, 'triangle', 0.2, i * 0.15)); }
+    else { add('square', 349); add('square', 440); }
+    return { stop() { if (timer) clearInterval(timer); g.gain.setTargetAtTime(0, actx.currentTime, 0.03); setTimeout(() => { osc.forEach((o) => { try { o.stop(); } catch (e) {} }); g.disconnect(); }, 220); } };
+  }
+  function horn(on) { if (!actx || !soundOn) return; if (on) { if (!hornH) hornH = makeHorn(look.horn); } else if (hornH) { hornH.stop(); hornH = null; } }
+  function previewHorn(id) { if (!actx || !soundOn) return; const h = makeHorn(id); setTimeout(() => h.stop(), id === 'melody' ? 950 : 650); }
+
+  /* Wallet HUD ------------------------------------------------------------ */
+  const wh = { c: $('#wh-c'), t: $('#wh-t'), coins: $('#wh-coins'), fill: $('#wh-fill'), box: $('#wallet-hud'), nitro: $('#nitro'), nitroFill: $('#nitro-fill'), drift: $('#drift-hud'), tNitro: $('#t-nitro') };
+  wh.t.textContent = Progress.TOTAL;
+  function hudSync() {
+    wh.c.textContent = Progress.count(); wh.coins.textContent = Progress.fmt(Progress.coins()); wh.fill.style.width = (Progress.count() / Progress.TOTAL * 100) + '%';
+    const sc = document.getElementById('sh-coins'); if (sc) sc.textContent = Progress.fmt(Progress.coins());
+    wh.nitro.hidden = !upg.nitro; if (wh.tNitro) wh.tNitro.hidden = !upg.nitro;
+  }
+  Progress.on(hudSync); hudSync();
+  function bump() { wh.box.classList.remove('bump'); void wh.box.offsetWidth; wh.box.classList.add('bump'); }
+
+  /* Coins scattered around the world --------------------------------------- */
+  const COINS = [];
+  districts.forEach((d) => {
+    for (let t = 34; t < d.roadLen - 10; t += 11) { const off = Math.sin(t * 0.35 + d.index) * 2.6; COINS.push({ x: d.u.x * t - d.u.z * off, z: d.u.z * t + d.u.x * off }); }
+    for (let k = 0; k < 10; k++) { const a = (k / 10) * TAU; COINS.push({ x: d.C.x + Math.cos(a) * d.padR * 0.3, z: d.C.z + Math.sin(a) * d.padR * 0.3 }); }
+  });
+  for (let k = 0; k < 14; k++) { const a = (k / 14) * TAU; COINS.push({ x: Math.cos(a) * 14, z: Math.sin(a) * 14 }); }
+  { let n = 0, tries = 0; while (n < 45 && tries++ < 3000) { const a = rnd() * TAU, r = 40 + rnd() * 250; const x = Math.cos(a) * r, z = Math.sin(a) * r; if (!free(x, z, 3)) continue; COINS.push({ x, z }); n++; } }
+  COINS.forEach((c, i) => { c.i = i; c.gone = Progress.collected(i); });
+  const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.16, 20); coinGeo.rotateX(Math.PI / 2);
+  const coinMesh = new THREE.InstancedMesh(coinGeo, new THREE.MeshStandardMaterial({ color: 0xffc93c, emissive: 0xffa300, emissiveIntensity: 0.55, metalness: 0.85, roughness: 0.28 }), COINS.length);
+  coinMesh.frustumCulled = false; world.add(coinMesh);
+  const _cq = new THREE.Quaternion(), _cs = new THREE.Vector3(1, 1, 1), _cp = new THREE.Vector3(), _cm = new THREE.Matrix4(), _cy = new THREE.Vector3(0, 1, 0), _zero = new THREE.Matrix4().makeScale(0, 0, 0);
+  const COIN_VALUE = 5;
+  function collectCoin(c) { c.gone = true; Progress.collect(c.i, COIN_VALUE); chime(); bump(); }
+  function updateCoins(t, dt, all) {
+    for (let i = 0; i < COINS.length; i++) {
+      const c = COINS[i];
+      if (c.gone) { coinMesh.setMatrixAt(i, _zero); continue; }
+      let dx = car.x - c.x, dz = car.z - c.z, d2 = dx * dx + dz * dz;
+      if (!all && d2 > 170 * 170) continue;
+      if (upg.magnet && d2 < 16 * 16 && d2 > 1) { const d = Math.sqrt(d2), m = Math.min(d, 24 * dt); c.x += (dx / d) * m; c.z += (dz / d) * m; dx = car.x - c.x; dz = car.z - c.z; d2 = dx * dx + dz * dz; }
+      if (d2 < 2.7 * 2.7 && !all) { collectCoin(c); coinMesh.setMatrixAt(i, _zero); continue; }
+      _cq.setFromAxisAngle(_cy, t * 2.4 + i); _cp.set(c.x, 1.5 + Math.sin(t * 2 + i) * 0.18, c.z); _cm.compose(_cp, _cq, _cs); coinMesh.setMatrixAt(i, _cm);
+    }
+    coinMesh.instanceMatrix.needsUpdate = true;
+  }
+  updateCoins(0, 0, true);
+
+  /* Garage building ---------------------------------------------------------- */
+  GARAGE.rot = Math.atan2(-GARAGE.x, -GARAGE.z);
+  GARAGE.fx = GARAGE.x + Math.sin(GARAGE.rot) * 10; GARAGE.fz = GARAGE.z + Math.cos(GARAGE.rot) * 10;
+  { const g = new THREE.Group(); g.position.set(GARAGE.x, 0, GARAGE.z); g.rotation.y = GARAGE.rot;
+    const wall = mat(0x2a2f4a, { roughness: 0.7, metalness: 0.2 });
+    const b = box(13, 5.2, 8, wall); b.position.y = 2.6; g.add(b);
+    const roof = box(13.8, 0.5, 8.8, mat(0x141730)); roof.position.y = 5.45; g.add(roof);
+    const door = box(7, 4, 0.3, mat(0x0d1020)); door.position.set(0, 2.1, 4.05); g.add(door);
+    for (let i = 0; i < 6; i++) { const s = box(6.8, 0.1, 0.34, mat(0x1c2140)); s.position.set(0, 0.6 + i * 0.62, 4.08); g.add(s); }
+    const neon = box(13.2, 0.25, 0.3, glow(0xffd23f, 1.2)); neon.position.set(0, 4.6, 4.08); g.add(neon);
+    const side = box(0.25, 3.2, 0.3, glow(0xffd23f, 1)); [-3.9, 3.9].forEach((x) => { const m = side.clone(); m.position.set(x, 2.0, 4.08); g.add(m); });
+    const stex = canvasTex(1024, 256, (c, w, h) => { c.fillStyle = '#0a0d1b'; c.fillRect(0, 0, w, h); c.fillStyle = '#ffd23f'; c.fillRect(0, 0, w, 12); c.fillRect(0, h - 12, w, 12);
+      c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = `700 130px ${FONT}`; c.fillText('GARAGE', w / 2, 152); c.fillStyle = '#ffd23f'; c.font = `500 36px 'JetBrains Mono', monospace`; c.fillText('PAINT · WHEELS · NITRO · DRIFT', w / 2, 214); });
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(9.5, 2.4), new THREE.MeshBasicMaterial({ map: stex, toneMapped: false, fog: false })); sign.position.set(0, 7.3, 3.2); g.add(sign);
+    const back = sign.clone(); back.rotation.y = Math.PI; back.position.z = 3.1; g.add(back);
+    [-4.4, 4.4].forEach((x) => { const p = box(0.3, 2, 0.3, mat(0x141730)); p.position.set(x, 6.4, 3.15); g.add(p); });
+    // tyre stacks
+    [-6.2, 6.2].forEach((x) => { for (let k = 0; k < 3; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.28, 10, 20), mat(0x0e0f16, { roughness: 0.95 })); t.rotation.x = Math.PI / 2; t.position.set(x, 0.3 + k * 0.56, 5.4); g.add(t); } });
+    const pad = new THREE.Mesh(new THREE.PlaneGeometry(15, 12), new THREE.MeshStandardMaterial({ color: 0x1b1f33, roughness: 0.9 })); pad.rotation.x = -Math.PI / 2; pad.position.set(0, 0.05, 8); pad.receiveShadow = true; g.add(pad);
+    const hz = new THREE.Mesh(new THREE.RingGeometry(3.4, 3.7, 40), new THREE.MeshBasicMaterial({ color: 0xffd23f, side: THREE.DoubleSide, toneMapped: false })); hz.rotation.x = -Math.PI / 2; hz.position.set(0, 0.09, 10); g.add(hz);
+    shadowAll(g, true); g.traverse((n) => { if (n.isMesh) n.receiveShadow = true; }); world.add(g);
+    [-4.6, 0, 4.6].forEach((o) => addStatic(GARAGE.x + Math.cos(GARAGE.rot) * o, GARAGE.z - Math.sin(GARAGE.rot) * o, 4.7)); }
+  let nearGarage = false;
+
+  /* Discovered markers ---------------------------------------------------------- */
+  function markLm(lm) { lm.top.material.color.set(0xffd23f); lm.halo.material.color.set(0xffd23f); }
+  function markFound(id) { landmarks.forEach((lm) => { if (lm.p.id === id) markLm(lm); }); }
+  landmarks.forEach((lm) => { if (Progress.isFound(lm.p.id)) markLm(lm); });
+
+  /* Per-frame game update ----------------------------------------------------------- */
+  let driftScore = 0, driftIdle = 0, prevThrottle = 0, popCool = 0, nitroPuff = 0;
+  const smokeColor = () => (upg.drift ? parseInt(shopItem('smoke', look.smoke).color.slice(1), 16) : 0xdfe4ff);
+  const _hsl = new THREE.Color();
+  function gameUpdate(dt, sp, t) {
+    const want = !!(input.nitro && upg.nitro > 0 && nitro.fuel > 0 && !paused && car.long > -1);
+    nitro.on = want;
+    if (want) { nitro.fuel = Math.max(0, nitro.fuel - 34 * dt); nitro.idle = 0; }
+    else { nitro.idle += dt; if (nitro.idle > 1.2 && nitro.fuel < nitro.cap) nitro.fuel = Math.min(nitro.cap, nitro.fuel + 14 * dt); }
+    nitroFlames.visible = want;
+    const fx = Math.sin(car.h), fz = Math.cos(car.h), rx = Math.cos(car.h), rz = -Math.sin(car.h);
+    if (want) {
+      nitroFlames.children.forEach((c) => c.scale.set(1, 0.8 + Math.random() * 0.45, 1));
+      nitroPuff -= dt; if (nitroPuff <= 0) { nitroPuff = 0.035; [-0.55, 0.55].forEach((o) => puff(car.x - fx * (carLen / 2 + 1.2) + rx * o, 0.5, car.z - fz * (carLen / 2 + 1.2) + rz * o, -fx * 6, 0.4, -fz * 6, 1.2, 0.35, 0x8fd0ff)); }
+    }
+    wh.nitroFill.style.width = (nitro.cap ? (nitro.fuel / nitro.cap) * 100 : 0) + '%';
+    // drift bonus
+    const drifting = upg.drift && input.drift && car.drift > 0.5 && sp > 8;
+    if (drifting) { driftScore += dt * sp * 1.4; driftIdle = 0; }
+    else { driftIdle += dt; if (driftScore > 0 && driftIdle > 0.8) { const c = Math.floor(driftScore / 35); if (c > 0) { Progress.add(c); UI.toast(`<i class="coin"></i><div><b>+${c}</b><span>Drift bonus</span></div>`, '#ff9f43', 2200); chime(); bump(); } driftScore = 0; } }
+    wh.drift.textContent = driftScore > 12 ? 'DRIFT ' + Math.floor(driftScore) : '';
+    // exhaust pops
+    popCool -= dt;
+    if (upg.flames && prevThrottle > 0.5 && input.throttle === 0 && sp > 12 && popCool <= 0) {
+      popCool = 0.7; popSound();
+      [-0.55, 0.55].forEach((o) => { for (let k = 0; k < 3; k++) puff(car.x - fx * (carLen / 2 + 0.4) + rx * o, 0.55, car.z - fz * (carLen / 2 + 0.4) + rz * o, -fx * 5 + (Math.random() - 0.5) * 2, 0.6, -fz * 5 + (Math.random() - 0.5) * 2, 1.0, 0.28, k ? 0xff8a2a : 0xffe08a); });
+    }
+    prevThrottle = input.throttle;
+    if (look.neon === 'rainbow' && neonMesh) { _hsl.setHSL((t * 0.25) % 1, 1, 0.55); neonMesh.material.color.copy(_hsl); neonLight.color.copy(_hsl); }
+    updateCoins(t, dt, false);
+  }
+
+  /* ==================================================================== */
+  /*  Garage / shop UI                                                    */
+  /* ==================================================================== */
+  const shopEl = UI.el('aside', 'panel shop');
+  shopEl.setAttribute('aria-hidden', 'true');
+  shopEl.innerHTML = '<header><b>Garage</b><span class="shop-coins"><i class="coin"></i><b id="sh-coins">0</b></span><button class="ico" id="shop-x" aria-label="Close garage">✕</button></header><div class="tabs" id="tabs"></div><div class="shop-body" id="sbody"></div><footer class="shop-foot" id="sfoot"></footer>';
+  document.body.appendChild(shopEl);
+  const tabsEl = shopEl.querySelector('#tabs'), bodyEl = shopEl.querySelector('#sbody'), footEl = shopEl.querySelector('#sfoot');
+  let shopOpen = false, tab = 'paint', preview = null, showT = 0;
+
+  const slotOf = (id) => SH.slots.find((s) => s.id === id);
+  const equippedId = (slot) => look0(slot);
+  function look0(slot) { return readLook()[slot]; }
+  function applyLook() { buildCar(readLook(preview ? { [preview.slot]: preview.id } : null)); }
+
+  function swatchStyle(slot, it) {
+    if (slot === 'neon') return it.color ? (it.color === 'rainbow' ? 'background:conic-gradient(#ff4fd8,#33d6ff,#3dff9a,#ffd23f,#ff4fd8)' : `background:${it.color};box-shadow:0 0 14px ${it.color}`) : 'background:#1b1f33;border:1px dashed rgba(255,255,255,.35)';
+    if (it.color) return `background:${it.color}${slot === 'paint' && (it.metal || 0) > 0.9 ? ';background:linear-gradient(135deg,' + it.color + ',#fff8,' + it.color + ')' : ''}`;
+    return '';
+  }
+
+  function renderTabs() {
+    tabsEl.innerHTML = '';
+    [...SH.slots.map((s) => [s.id, s.name, s.icon]), ['upgrades', 'Upgrades', '⚡']].forEach(([id, name, icon]) => {
+      const b = UI.el('button', 'tab' + (tab === id ? ' on' : ''), `<i>${icon}</i>${UI.esc(name)}`); b.type = 'button';
+      b.addEventListener('click', () => { if (preview) { preview = null; applyLook(); } tab = id; renderShop(); });
+      tabsEl.appendChild(b);
+    });
+  }
+
+  function renderShop() {
+    renderTabs(); bodyEl.innerHTML = ''; footEl.innerHTML = '';
+    if (tab === 'upgrades') return renderUpgrades();
+    const slot = slotOf(tab); const cur = readLook()[tab];
+    const grid = UI.el('div', 'sgrid');
+    slot.items.forEach((it) => {
+      const owned = isOwned(tab, it), on = preview ? preview.id === it.id : cur === it.id;
+      const b = UI.el('button', 'sitem' + (on ? ' on' : '') + (owned ? ' owned' : ''), '');
+      b.type = 'button';
+      const sw = it.color !== undefined || tab === 'neon' ? `<span class="sw" style="${swatchStyle(tab, it)}"></span>` : `<span class="sw txt">${tab === 'body' ? '◭' : '♪'}</span>`;
+      b.innerHTML = `${sw}<span class="nm">${UI.esc(it.name)}</span><span class="pr">${cur === it.id && owned ? 'Equipped' : owned ? 'Owned' : `<i class="coin"></i>${Progress.fmt(it.price)}`}</span>${it.note ? `<small>${UI.esc(it.note)}</small>` : ''}`;
+      b.addEventListener('click', () => {
+        if (tab === 'horn') previewHorn(it.id);
+        if (owned) { Progress.equip(tab, it.id); preview = null; applyLook(); chime(); }
+        else { preview = { slot: tab, id: it.id }; applyLook(); }
+        renderShop();
+      });
+      grid.appendChild(b);
+    });
+    bodyEl.appendChild(grid);
+    if (preview) {
+      const it = shopItem(tab, preview.id), afford = Progress.coins() >= it.price;
+      footEl.innerHTML = `<div class="buy"><div><b>${UI.esc(it.name)}</b><span>Previewing on your car</span></div><button class="btn primary${afford ? '' : ' off'}" id="buy">Buy · <i class="coin"></i>${Progress.fmt(it.price)}</button><button class="btn" id="cancel">Cancel</button></div>`;
+      footEl.querySelector('#cancel').addEventListener('click', () => { preview = null; applyLook(); renderShop(); });
+      footEl.querySelector('#buy').addEventListener('click', () => {
+        if (!afford) { UI.toast(`<i class="coin"></i><div><b>Not enough coins</b><span>Need ${Progress.fmt(it.price - Progress.coins())} more — open projects and collect coins</span></div>`, '#ff5d7a', 3200); return; }
+        Progress.spend(it.price); Progress.own(tab + ':' + it.id); Progress.equip(tab, it.id); preview = null; applyLook(); chime(); bump();
+        UI.toast(`<i class="coin"></i><div><b>${UI.esc(it.name)}</b><span>Purchased and equipped</span></div>`, '#3ddc97', 2600); renderShop();
+      });
+    } else footEl.innerHTML = '<p class="tip">Tap an item to preview it on your car. Earn coins by opening projects and collecting coins in the world.</p><button class="link" id="reset">Reset progress</button>';
+    const rs = footEl.querySelector('#reset'); if (rs) rs.addEventListener('click', () => { if (confirm('Reset all discovered projects, coins and purchases?')) { Progress.reset(); preview = null; refreshUpgrades(true); COINS.forEach((c) => { c.gone = false; }); landmarks.forEach((lm) => { lm.top.material.color.set(lm.d.cat.color); lm.halo.material.color.set(lm.d.cat.color); }); applyLook(); renderShop(); } });
+  }
+
+  function renderUpgrades() {
+    const wrap = UI.el('div', 'ups');
+    SH.upgrades.forEach((u) => {
+      const lvl = u.levels.length > 1 ? levelOf(u.id, u.levels.length) : (Progress.owns(u.id + ':1') ? 1 : 0), max = u.levels.length, next = u.levels[lvl];
+      const card = UI.el('div', 'up' + (lvl >= max ? ' max' : ''));
+      const dots = max > 1 ? `<span class="dots">${u.levels.map((_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('')}</span>` : '';
+      card.innerHTML = `<div class="ic">${u.icon}</div><div class="tx"><b>${UI.esc(u.name)}</b>${dots}<p>${UI.esc(u.desc)}</p></div>`;
+      const btn = UI.el('button', 'btn' + (lvl >= max ? '' : ' primary'), lvl >= max ? 'Owned' : `${max > 1 ? 'Level ' + (lvl + 1) + ' · ' : ''}<i class="coin"></i>${Progress.fmt(next.price)}`);
+      btn.type = 'button'; btn.disabled = lvl >= max;
+      btn.addEventListener('click', () => {
+        if (Progress.coins() < next.price) { UI.toast(`<i class="coin"></i><div><b>Not enough coins</b><span>Need ${Progress.fmt(next.price - Progress.coins())} more</span></div>`, '#ff5d7a', 3200); return; }
+        Progress.spend(next.price); Progress.own(u.id + ':' + (lvl + 1)); refreshUpgrades(true); chime(); bump(); hudSync();
+        UI.toast(`<i class="coin"></i><div><b>${UI.esc(u.name)}${max > 1 ? ' Lv ' + (lvl + 1) : ''}</b><span>Installed</span></div>`, '#3ddc97', 2600); renderShop();
+      });
+      card.appendChild(btn); wrap.appendChild(card);
+    });
+    bodyEl.appendChild(wrap);
+    footEl.innerHTML = '<p class="tip">Drift Kit unlocks Space-drifting and pays coins for long drifts. Hold Shift for nitro once you own it.</p>';
+  }
+
+  function openShop() {
+    if (shopOpen) return; if (panel.classList.contains('open')) togglePanel(false);
+    shopOpen = true; preview = null; setPause('shop', true); shopEl.classList.add('open'); shopEl.setAttribute('aria-hidden', 'false'); horn(false);
+    showT = car.h + Math.PI * 0.85; renderShop(); hudSync();
+  }
+  function closeShop() {
+    if (!shopOpen) return; shopOpen = false; preview = null; applyLook(); shopEl.classList.remove('open'); shopEl.setAttribute('aria-hidden', 'true'); setPause('shop', false);
+    camAngle = car.h;
+  }
+  shopEl.querySelector('#shop-x').addEventListener('click', closeShop);
+  $('#btn-shop').addEventListener('click', () => { kickstart(); shopOpen ? closeShop() : openShop(); });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && shopOpen && !UI.isOpen()) closeShop(); });
+
 
   /* ------------------------------------------------------------------ */
   /*  Main loop                                                          */
@@ -860,9 +1167,11 @@
     smokeT -= dt;
     if (smokeT <= 0 && (car.drift > 0.45 || (input.drift && sp > 5) || (input.throttle > 0 && car.long < 6 && sp < 8 && input.throttle > 0.9 && false))) {
       smokeT = 0.03; const fx = Math.sin(car.h), fz = Math.cos(car.h), rx = Math.cos(car.h), rz = -Math.sin(car.h);
-      [-1, 1].forEach((sd) => { const x = car.x - fx * 1.4 + rx * sd * 1.06, z = car.z - fz * 1.4 + rz * sd * 1.06; puff(x, 0.25, z, car.vx * 0.1 + (Math.random() - 0.5), 0.8, car.vz * 0.1 + (Math.random() - 0.5), 1.6, 0.9); addSkid(x, z, Math.atan2(car.vx, car.vz)); });
+      [-1, 1].forEach((sd) => { const x = car.x - fx * 1.4 + rx * sd * 1.06, z = car.z - fz * 1.4 + rz * sd * 1.06; puff(x, 0.25, z, car.vx * 0.1 + (Math.random() - 0.5), 0.8, car.vz * 0.1 + (Math.random() - 0.5), 1.6, 0.9, smokeColor()); addSkid(x, z, Math.atan2(car.vx, car.vz)); });
     }
     for (const p of puffs) { if (p.life > 0) { p.life -= dt; const k = 1 - p.life / p.max; p.s.position.x += p.vx * dt; p.s.position.y += p.vy * dt; p.s.position.z += p.vz * dt; const s = p.size * (0.6 + k * 1.6); p.s.scale.set(s, s, 1); p.s.material.opacity = 0.42 * (1 - k); if (p.life <= 0) p.s.visible = false; } }
+
+    gameUpdate(dt, sp, tNow);
 
     // audio
     if (engGain) { const th = Math.abs(input.throttle), ratio = clamp(sp / MAX_SPEED, 0, 1); const f = 46 + ratio * 120 + th * 20; engine.frequency.setTargetAtTime(f, actx.currentTime, 0.05); engine._e2.frequency.setTargetAtTime(f * 0.5, actx.currentTime, 0.05); engFilter.frequency.setTargetAtTime(280 + ratio * 900 + th * 300, actx.currentTime, 0.08); engGain.gain.setTargetAtTime(0.05 + th * 0.06 + ratio * 0.05, actx.currentTime, 0.08); }
@@ -893,5 +1202,5 @@
   }
   boot();
 
-  window.__world = { car, districts, landmarks, teleportTo, respawn, scene, camera, renderer };
+  window.__world = { upg, nitro, openShop, closeShop, COINS, car, districts, landmarks, teleportTo, respawn, scene, camera, renderer };
 })();
