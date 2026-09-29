@@ -158,7 +158,8 @@
       points: [
         'Eye tracking built on the open-source GazeTracking library with blink detection and a 9-point calibration tool; ~20–30 FPS on a Raspberry Pi 5 with a USB webcam.',
         'On-screen keyboard and mouse-pointer control driven by gaze, streamed to the browser through a Flask video feed.',
-        'Word suggestions from DistilGPT-2 with a 100 k-word dictionary, and an Ollama-backed assistant.'
+        'Word suggestions from DistilGPT-2 with a 100 k-word dictionary, and an Ollama-backed assistant.',
+        'Recalibration, detailed-analysis, diagnostics and MediaPipe-based experiments were built around the tracker.'
       ],
       stack: ['Python', 'OpenCV', 'GazeTracking', 'Flask', 'PyTorch', 'DistilGPT-2', 'Ollama', 'Raspberry Pi 5']
     }),
@@ -658,6 +659,58 @@
       desc: 'A library of verified test sketches used to characterize parts before integration.',
       points: ['MAX30102 (heart rate and SpO₂) and MAX30100, HX711 load cell, SH1106 OLED, ESP32-CAM web streaming, RFID, flex sensors, DFPlayer, L298N motor driver, DHT22 + MQ-135 + flame node.'],
       stack: ['Arduino', 'ESP32', 'I²C', 'SPI', 'UART']
+    }),
+
+    P({
+      id: 'smart-glasses-ai', name: 'Smart Glasses — AI Vision & Voice', status: 'Team project',
+      cats: ['vision', 'ai', 'healthcare', 'embedded'],
+      tagline: 'Glasses that recognise faces, read currency, name colours and talk back.',
+      desc: 'A team project: an assistive vision-and-audio stack for smart glasses, with a Raspberry Pi on the glasses streaming camera, microphone and speaker over the network to a Python application that does the heavy AI work.',
+      points: [
+        'Switchable vision modes: currency detection (YOLO), colour identification (K-Means), face detection and a full register → train → recognise flow for people.',
+        'Speech: Vosk speech-to-text and Piper text-to-speech services, microphone capture and MP3 playback streamed over TCP to the Pi.',
+        'Raspberry Pi GPIO control through pigpio, with a Tkinter dashboard for live pin state and PWM, plus button and mDNS-discovery services.',
+        'Service-oriented Python code base (handlers, models and services) built together with teammates.'
+      ],
+      stack: ['Python', 'OpenCV', 'YOLO', 'K-Means', 'Vosk', 'Piper TTS', 'Raspberry Pi', 'pigpio', 'Tkinter', 'TCP / mDNS']
+    }),
+    P({
+      id: 'firefighter-vr', name: 'Firefighter Simulator VR', status: 'Team project',
+      cats: ['interactive'],
+      tagline: 'Train in VR: grab a hose, fight a fire that spreads, and respond to the alarm.',
+      desc: 'A Unity VR training game built with a team. Fire behaves like a living system — it spreads to neighbours and only dies when soaked long enough — and the player handles a real hose.',
+      points: [
+        'Fire simulation: each fire counts burning neighbours within a radius, ignites or is extinguished by timers, and reacts to water hits through an IWaterInteractable interface.',
+        'Hose system with rope handling, handle movement and water collision.',
+        'Fire-station menu scene and a game scene, with alarm, radio, narrator and audience controllers.',
+        'Configured for Oculus / Quest headsets.'
+      ],
+      stack: ['Unity', 'C#', 'VR (Oculus / Quest)', 'Blender', 'Particle systems']
+    }),
+    P({
+      id: 'planets-vr', name: 'Planets Exploration — Space Education VR', status: 'Team project',
+      cats: ['interactive'],
+      tagline: 'Fly a spaceship through the solar system and learn each planet by voice — then take the quiz.',
+      desc: 'An educational Unity XR experience: planets are brought to the centre of the scene with narration, descriptions and sound, and a quiz checks what you learned.',
+      points: [
+        'Every planet is a data object with a name, description and its own narration clip (Mercury to Neptune).',
+        'A UI-and-audio controller reacts to cutscene events when a planet moves to the centre.',
+        'Quiz manager with correct / incorrect answer sounds; spaceship interior, gloves and warp-speed effects.',
+        'Built on OpenXR, the Oculus package and the XR Interaction Toolkit.'
+      ],
+      stack: ['Unity', 'C#', 'OpenXR', 'Oculus XR', 'XR Interaction Toolkit', 'Spatial audio']
+    }),
+    P({
+      id: 'physics-lab-3d', name: '3D Physics Lab', status: 'Team project',
+      cats: ['interactive'],
+      tagline: 'Interactive Unity experiments: colliding cubes that compute π, projectiles, pendulums and free fall.',
+      desc: 'A virtual physics laboratory where each experiment is defined in JSON with its own adjustable parameters and rendered with live trajectory graphs.',
+      points: [
+        'Experiments: Cubic π (elastic cube collisions to approximate π to N decimals), projectile motion, simple pendulum and free fall.',
+        'Air-resistance model, cannon behaviour and 2D / 3D trajectory graph renderers.',
+        'Menu driven by a JSON experiment catalogue; outline-based object selection using the open-source QuickOutline asset.'
+      ],
+      stack: ['Unity', 'C#', 'JSON', 'Physics simulation', 'Data visualisation']
     }),
 
     /* ------------------------------------------------------------------ */
