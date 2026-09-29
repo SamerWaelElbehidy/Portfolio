@@ -655,7 +655,7 @@
     const stick = $('#stick'), knob = $('#knob'); let pid = null, cx = 0, cy = 0;
     const R = 62;
     const move = (e) => { const dx = e.clientX - cx, dy = e.clientY - cy; const d = Math.hypot(dx, dy) || 1; const k = Math.min(d, R) / d; const x = dx * k, y = dy * k; knob.style.transform = `translate(${x}px,${y}px)`; touchIn.x = x / R; touchIn.y = -y / R; };
-    stick.addEventListener('pointerdown', (e) => { pid = e.pointerId; stick.setPointerCapture(pid); const r = stick.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; move(e); kickstart(); });
+    stick.addEventListener('pointerdown', (e) => { pid = e.pointerId; try { stick.setPointerCapture(pid); } catch (err) {} const r = stick.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; move(e); kickstart(); });
     stick.addEventListener('pointermove', (e) => { if (e.pointerId === pid) move(e); });
     const end = (e) => { if (e.pointerId !== pid) return; pid = null; touchIn.x = touchIn.y = 0; knob.style.transform = ''; };
     stick.addEventListener('pointerup', end); stick.addEventListener('pointercancel', end);
@@ -940,6 +940,7 @@
   /* Wallet HUD ------------------------------------------------------------ */
   const wh = { c: $('#wh-c'), t: $('#wh-t'), coins: $('#wh-coins'), fill: $('#wh-fill'), box: $('#wallet-hud'), nitro: $('#nitro'), nitroFill: $('#nitro-fill'), drift: $('#drift-hud'), tNitro: $('#t-nitro') };
   wh.t.textContent = Progress.TOTAL;
+  if (IS_TOUCH) wh.nitro.querySelector('small').textContent = 'Nitro';
   function hudSync() {
     wh.c.textContent = Progress.count(); wh.coins.textContent = Progress.fmt(Progress.coins()); wh.fill.style.width = (Progress.count() / Progress.TOTAL * 100) + '%';
     const sc = document.getElementById('sh-coins'); if (sc) sc.textContent = Progress.fmt(Progress.coins());
@@ -1202,5 +1203,5 @@
   }
   boot();
 
-  window.__world = { upg, nitro, openShop, closeShop, COINS, car, districts, landmarks, teleportTo, respawn, scene, camera, renderer };
+  window.__world = { pauseFlags, get paused() { return paused; }, input, touchIn, upg, nitro, openShop, closeShop, COINS, car, districts, landmarks, teleportTo, respawn, scene, camera, renderer };
 })();

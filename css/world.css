@@ -88,7 +88,7 @@ kbd { display: inline-block; min-width: 1.5em; padding: 0.05em 0.45em; margin-ri
 .nitro i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #2f6bff, #8fd0ff); box-shadow: 0 0 12px #4aa8ff; }
 .drift-hud { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; letter-spacing: 0.05em; color: #ffb45f; text-shadow: 0 0 20px rgba(255, 159, 67, 0.7), 0 3px 12px #000; pointer-events: none !important; }
 .tb.nitro-b { background: linear-gradient(135deg, #2f6bff, #4aa8ff); border-color: transparent; }
-@media (pointer: coarse) { .nitro { bottom: 7.2rem; } .wallet-hud { top: 3.6rem; } }
+@media (pointer: coarse) { .nitro { right: auto; left: 1.6rem; width: 150px; text-align: left; bottom: calc(max(2rem, env(safe-area-inset-bottom)) + 165px); } .wallet-hud { top: 3.6rem; } }
 
 /* Shop --------------------------------------------------------------- */
 .panel.shop { width: min(440px, 100%); z-index: 210; }
