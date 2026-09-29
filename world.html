@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Drive the Portfolio — Samer Wael</title>
+  <meta name="description" content="Drive a car through a 3D world where every project by Samer Wael is a landmark.">
+  <meta name="theme-color" content="#1a2456">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/modal.css">
+  <link rel="stylesheet" href="css/world.css">
+</head>
+<body>
+  <canvas id="gl" aria-label="3D world"></canvas>
+
+  <div id="loader"><div class="ld-car"></div><p>Building the world…</p><div class="ld-bar"><i id="ld-fill"></i></div></div>
+
+  <div class="hud" id="hud" hidden>
+    <a class="hud-back" href="index.html">← Portfolio</a>
+
+    <div class="hud-district" id="district"><small>Now entering</small><b></b></div>
+
+    <div class="hud-right">
+      <canvas id="minimap" width="220" height="220" aria-label="Map"></canvas>
+      <div class="hud-btns">
+        <button id="btn-map" class="ico" title="Districts &amp; search (Tab)">☰ Districts</button>
+        <button id="btn-cam" class="ico" title="Camera (C)">◎</button>
+        <button id="btn-snd" class="ico" title="Sound (M)">♪</button>
+      </div>
+    </div>
+
+    <div class="hud-speed"><b id="spd">0</b><span>km/h</span></div>
+
+    <button class="prompt" id="prompt" hidden><span class="k">Enter</span><span class="txt"></span></button>
+
+    <div class="keys" id="keys">
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows drive</span>
+      <span><kbd>Space</kbd> drift</span>
+      <span><kbd>H</kbd> horn</span>
+      <span><kbd>Enter</kbd> open project</span>
+      <span><kbd>R</kbd> reset car</span>
+    </div>
+
+    <div class="touch" id="touch">
+      <div class="stick" id="stick"><i id="knob"></i></div>
+      <div class="tbtns">
+        <button id="t-open" class="tb primary">Open</button>
+        <button id="t-drift" class="tb">Drift</button>
+        <button id="t-horn" class="tb">Horn</button>
+      </div>
+    </div>
+  </div>
+
+  <aside class="panel" id="panel" aria-hidden="true">
+    <header>
+      <b>Districts &amp; projects</b>
+      <button id="panel-x" class="ico" aria-label="Close">✕</button>
+    </header>
+    <input id="pq" type="search" placeholder="Find a project and drive there…" aria-label="Search projects">
+    <div id="plist"></div>
+  </aside>
+
+  <noscript><p style="padding:2rem">This interactive world needs JavaScript. <a href="index.html">Back to the portfolio</a>.</p></noscript>
+
+  <script src="js/vendor/three.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/world.js"></script>
+</body>
+</html>
