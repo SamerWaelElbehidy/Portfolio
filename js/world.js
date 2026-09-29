@@ -791,9 +791,9 @@
   $('#btn-cam').addEventListener('click', toggleCam);
   function updateCamera(dt) {
     if (shopOpen) {
-      showT += dt * 0.35; const r = 10.5;
-      camera.position.x = damp(camera.position.x, car.x + Math.sin(showT) * r, 3, dt); camera.position.z = damp(camera.position.z, car.z + Math.cos(showT) * r, 3, dt); camera.position.y = damp(camera.position.y, IS_TOUCH ? 4.4 : 3.4, 3, dt);
-      const off = IS_TOUCH ? 0 : -3.4; camLook.set(car.x + Math.cos(showT) * off, IS_TOUCH ? -0.4 : 0.9, car.z - Math.sin(showT) * off); camera.lookAt(camLook);
+      const narrow = innerWidth < 700; showT += dt * 0.35; const r = narrow ? 14 : 10.5;
+      camera.position.x = damp(camera.position.x, car.x + Math.sin(showT) * r, 3, dt); camera.position.z = damp(camera.position.z, car.z + Math.cos(showT) * r, 3, dt); camera.position.y = damp(camera.position.y, narrow ? 6.2 : 3.4, 3, dt);
+      const off = narrow ? 0 : -3.4; camLook.set(car.x + Math.cos(showT) * off, narrow ? -2.2 : 0.9, car.z - Math.sin(showT) * off); camera.lookAt(camLook);
       if (Math.abs(camera.fov - 46) > 0.1) { camera.fov = damp(camera.fov, 46, 4, dt); camera.updateProjectionMatrix(); }
       return;
     }
